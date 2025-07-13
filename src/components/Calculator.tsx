@@ -19,7 +19,7 @@ const Calculator = (props: Props) => {
     const buttons = [
         { label: "AC", onPress: () => handleClearAll() },
         { label: "C", onPress: () => handleClear() },
-        { label: "%", onPress: () => handleClick('7') },
+        { label: "%", onPress: () => handleClick('%') },
         { label: "÷", onPress: () => handleClick('÷') },
         { label: "7", onPress: () => handleClick('7') },
         { label: "8", onPress: () => handleClick('8') },
@@ -74,6 +74,12 @@ const Calculator = (props: Props) => {
         }
     };
 
+    const preprocessExpression = (expr: string) => {
+        return expr
+            .replace(/(\d+(\.\d+)?)%/g, '($1/100)')
+            .replace(/÷/g, '/')
+    };
+
     const handleEqual = () => {
         try {
             if (!currentExpression) {
@@ -81,7 +87,9 @@ const Calculator = (props: Props) => {
                 return;
             }
 
-            const evaluatedResult = math.evaluate(currentExpression);
+            const preProcessExpression = preprocessExpression(currentExpression);
+
+            const evaluatedResult = math.evaluate(preProcessExpression);
 
             if (evaluatedResult === undefined || isNaN(evaluatedResult)) {
                 toast({ title: "Uh Oh", description: 'Invalid Expression' });
@@ -97,7 +105,7 @@ const Calculator = (props: Props) => {
 
         } catch (error) {
             toast({ title: "Uh Oh", description: 'Invalid Expression' });
-            console.log(error)
+            console.error(error)
         }
         return;
 
