@@ -1,124 +1,177 @@
 import React, { useState } from 'react'
 import styles from "./Calculator.module.css";
-import { Input } from '@/components/ui/input';
 import * as math from 'mathjs';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import CustomDialogContent from '@/components/modal';
 import ButtonNum from '@/components/ButtonNum';
+import useStore, { HistoryItem } from '@/store/useStore';
+import { Button } from './ui/button';
 
 type Props = {}
 
 const Calculator = (props: Props) => {
 
-    const [expression, setExpression] = useState<string>('0');
-    const [result, setResult] = useState<string | number>('0');
-    const [showResult, setShowResult] = useState(false);
-    const [history, setHistory] = useState<expression, result[]>([]);;
-
     const { toast } = useToast();
+    const [showResult, setShowResult] = useState(false);
+    const { history, setHistory, lastExpression, setLastExpression, total, setTotal, currentExpression, setCurrentExpression, reset } = useStore();
 
     const buttons = [
-        { label: "C" },
-        { label: "/" },
-        { label: "*" },
-        { label: "-" },
-        { label: "7" },
-        { label: "8" },
-        { label: "9" },
-        { label: "+" },
-        { label: "4" },
-        { label: "5" },
-        { label: "6" },
-        { label: "1" },
-        { label: "2" },
-        { label: "3" },
-        { label: "=" },
-        { label: "0" },
-        { label: "." },
+        { label: "AC", onPress: () => handleClearAll() },
+        { label: "C", onPress: () => handleClear() },
+        { label: "%", onPress: () => handleClick('7') },
+        { label: "÷", onPress: () => handleClick('÷') },
+        { label: "7", onPress: () => handleClick('7') },
+        { label: "8", onPress: () => handleClick('8') },
+        { label: "9", onPress: () => handleClick('9') },
+        { label: "X", onPress: () => handleClick('*') },
+        { label: "4", onPress: () => handleClick('4') },
+        { label: "5", onPress: () => handleClick('5') },
+        { label: "6", onPress: () => handleClick('6') },
+        { label: "-", onPress: () => handleClick('-') },
+        { label: "1", onPress: () => handleClick('1') },
+        { label: "2", onPress: () => handleClick('2') },
+        { label: "3", onPress: () => handleClick('3') },
+        { label: "+", onPress: () => handleClick('+') },
+        { label: "±", onPress: () => handlePlusMinus() },
+        { label: "0", onPress: () => handleClick('0') },
+        { label: ".", onPress: () => handleClick('.') },
+        { label: "=", onPress: () => handleEqual() },
     ];
 
-    const handleButtonClick = (button: string) => {
+    const handleClear = () => {
+        const clearOne = currentExpression.slice(0, -1);
+        setCurrentExpression(clearOne);
+    };
 
-        if (button === "C") {
-            setExpression('0');
-            setResult('0');
-            setShowResult(false);
-            return;
-        }
+    const handleClearAll = () => {
+        setCurrentExpression("");
+        setTotal(0);
+        setShowResult(false);
+    };
 
-        if (button === "=") {
-            try {
-                if (!expression) {
-                    toast({ title: "uh oh", description: 'Please enter an expression' });
-                    return;
-                }
+    const handlePlusMinus = () => {
+        const expr = currentExpression;
 
-                const evaluatedResult = math.evaluate(expression);
+        const match = expr.match(/(.*?)(\(?-?\d+\.?\d*\)?)(?!.*\d)/);
 
-                if (evaluatedResult === undefined || isNaN(evaluatedResult)) {
-                    toast({ title: "uh oh", description: 'invalid expression' });
-                    return;
-                }
+        if (match) {
+            const [_, before, lastNum] = match;
 
-                setResult(evaluatedResult);
-                setShowResult(true);
-                setHistory([...history, { expression, result: evaluatedResult }]);
-            } catch (error) {
-                toast({ title: "uh oh", description: 'invalid expression' });
-                console.log(error)
+            let toggled;
+            if (lastNum.startsWith("(-")) {
+
+                toggled = lastNum.slice(2, -1);
+            } else if (lastNum.startsWith("-") && !lastNum.startsWith("(-")) {
+
+                toggled = `(${lastNum})`;
+            } else {
+
+                toggled = `(-${lastNum})`;
             }
-            return;
+
+            setCurrentExpression(before + toggled);
         }
+    };
+
+    const handleEqual = () => {
+        try {
+            if (!currentExpression) {
+                toast({ title: "Uh Oh", description: 'Please enter an expression' });
+                return;
+            }
+
+            const evaluatedResult = math.evaluate(currentExpression);
+
+            if (evaluatedResult === undefined || isNaN(evaluatedResult)) {
+                toast({ title: "Uh Oh", description: 'Invalid Expression' });
+
+                return;
+            }
+
+            setShowResult(true);
+
+            setTotal(evaluatedResult);
+            setLastExpression(currentExpression);
+            setHistory({ expression: currentExpression, result: evaluatedResult });
+
+        } catch (error) {
+            toast({ title: "Uh Oh", description: 'Invalid Expression' });
+            console.log(error)
+        }
+        return;
+
+    };
+
+    const handleClick = (button: string) => {
+
+        const expression = currentExpression;
 
         if (showResult) {
             if (['+', '-', '*', '/'].includes(button)) {
-                setExpression(result + button);
+                setCurrentExpression(total + button);
             } else {
-                setExpression(button);
+                setCurrentExpression(button);
             }
             setShowResult(false);
             return;
         }
 
         if (expression === "0") {
-            setExpression(button);
+            setCurrentExpression(button);
         } else {
-            setExpression(expression + button);
+            setCurrentExpression(expression + button);
         }
 
     };
 
-    const handleHistoryClick = (item) => {
-        setExpression(item.result);
+    const handleHistoryClick = (item: HistoryItem) => {
+        //   @ts-ignore
+        setCurrentExpression(item.result);
         setShowResult(false)
     }
 
-    const displayValue = showResult ? result : expression;
+    const displayValue = showResult ? total : currentExpression;
 
     return (
-        <div className='flex flex-col justify-center items-center min-w-[15rem] max-h-[80vh] min-h-[20rem] border px-5 rounded-md'>
+        <div className='flex flex-col justify-center items-center w-full max-w-lg  my-auto border-card-foreground/80 border-1 mx-2 p-5 rounded-md bg-card'>
 
             <Dialog>
                 <DialogTrigger asChild>
-                    <Input type='text' className='w-[100%] h-12 px-4 border border-gray-300 rounded-md' value={displayValue} readOnly />
-                </DialogTrigger>
-                <CustomDialogContent>
-                    {history.map((item, index) => (
-                        <DialogClose asChild key={index}>
-                            <div className='flex justify-between items-center border-b border-gray-300 p-2 cursor-pointer' onClick={() => handleHistoryClick(item)}>
-                                <span>{item.expression}</span>
-                                <span>{item.result}</span>
-                            </div>
-                        </DialogClose>
+                    <div className='w-full py-2 px-1 border border-gray-500 rounded-md text-right flex flex-col justify-end items-end h-18'>
+                        <p
+                            className={`text-sm w-full overflow-x-auto whitespace-nowrap ${showResult ? 'text-gray-500' : 'text-transparent'}`}
+                        >
+                            {lastExpression}
+                        </p>
+                        <p
+                            className='text-2xl w-full overflow-x-auto whitespace-nowrap'
+                        >
+                            {displayValue}
+                        </p>
+                    </div>
 
-                    ))}
-                </CustomDialogContent>
+                </DialogTrigger>
+                <CustomDialogContent
+                    footer={<Button onClick={reset}>Clear History</Button>}
+                    children={
+                        <div className='overflow-y-scroll overflow-x-hidden max-h-[80vh] px-2'>
+                            {history.map((item, index) => (
+                                <DialogClose asChild key={index}>
+                                    <div className='flex justify-between items-center border-b border-gray-500 p-1 cursor-pointer' onClick={() => handleHistoryClick(item)}>
+                                        <span className='w-1/2 overflow-hidden text-ellipsis'>{item.expression}</span>
+                                        <span>{item.result}</span>
+                                    </div>
+                                </DialogClose>
+                            ))}
+                        </div>
+                    }
+                />
             </Dialog>
 
-            <div className={["w-[15rem] mt-2", styles.parent].join(" ")}>
+            <div className="grid grid-cols-4 gap-2 w-full max-w-lg mt-4">
                 {buttons.map((button, index) => (
-                    <ButtonNum index={index + 1} button={button.label} handleButtonClick={handleButtonClick} />
+                    <ButtonNum index={index + 1} button={button.label} handleButtonClick={button.onPress} />
                 ))}
             </div>
 
