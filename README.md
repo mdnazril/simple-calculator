@@ -34,9 +34,11 @@ git clone https://github.com/mdnazril/simple-calculator.git
 cd simple-calculator
 
 npm install
-# or
-yarn
 
 npm run dev
-# or
+
+### or
+
+yarn
+
 yarn dev
